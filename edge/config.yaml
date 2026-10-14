@@ -1,0 +1,19 @@
+server:
+  target_url: "http://127.0.0.1:8000/api/detections"
+  timeout_seconds: 3.0
+
+model:
+  weights: "edge/models/plate_yolo11.pt"
+  conf_threshold: 0.35
+  imgsz: 640
+
+inference:
+  frame_stride: 2
+  ocr_min_confidence: 0.70
+  debounce_cooldown_seconds: 30.0
+
+cameras:
+  - id: "CAM-01"
+    name: "mobile-cam-hazratganj"
+    location: [26.8467, 80.9462]
+    source: "http://172.30.139.198:8080/video"
