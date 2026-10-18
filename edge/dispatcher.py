@@ -1,37 +1,38 @@
-import queue
-import threading
+import os
+import time
 import requests
 import logging
+import threading
+from queue import Queue
 
 class Dispatcher:
-    def __init__(self, target_url: str, timeout: float = 3.0):
+    def __init__(self, target_url="http://127.0.0.1:8000/api/detections"):
         self.target_url = target_url
-        self.timeout = timeout
-        self.queue = queue.Queue(maxsize=100)
+        self.queue = Queue()
         self.running = True
-        self.worker = threading.Thread(target=self._run, daemon=True)
-        self.worker.start()
+        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
+        self.worker_thread.start()
 
     def dispatch(self, payload: dict):
-        try:
-            self.queue.put_nowait(payload)
-        except queue.Full:
-            logging.warning("[DISPATCH] Queue full, dropping payload.")
+        self.queue.put(payload)
 
-    def _run(self):
+    def _worker(self):
         while self.running:
             try:
-                payload = self.queue.get(timeout=1.0)
-            except queue.Empty:
+                payload = self.queue.get(timeout=1)
+            except Exception:
                 continue
-            try:
-                resp = requests.post(self.target_url, json=payload, timeout=self.timeout)
-                logging.info(f"[DISPATCH] Sent {payload.get('plate')} -> HTTP {resp.status_code}")
-            except Exception as e:
-                # Laptop 2 offline ho tab bhi camera loop freeze nahi hoga
-                logging.warning(f"[DISPATCH] Server unreachable: {e}")
-            finally:
-                self.queue.task_done()
 
-    def stop(self):
-        self.running = False
+            sent = False
+            while not sent and self.running:
+                try:
+                    res = requests.post(self.target_url, json=payload, timeout=2)
+                    if res.status_code in [200, 201]:
+                        sent = True
+                        logging.info(f"dispatched successfully: {payload.get('plate_number', 'EVENT')}")
+                    else:
+                        time.sleep(3)
+                except Exception:
+                    # server unreachable hone par wait karega aur retry karega
+                    time.sleep(3)
+            self.queue.task_done()

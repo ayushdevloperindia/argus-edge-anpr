@@ -1,5 +1,5 @@
 server:
-  target_url: "http://127.0.0.1:8000/api/detections"
+  target_url: "http://172.30.139.101:8000/api/detections"
   timeout_seconds: 3.0
 
 model:
